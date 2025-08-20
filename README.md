@@ -1,1 +1,2 @@
 # SqlHelper
+Generic helper
