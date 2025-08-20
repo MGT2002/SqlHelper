@@ -16,8 +16,8 @@ public static class StaticHelper
             .Build();
 
         // read values directly without a class
-        string serverName = config["Connection:ServerName"]!;
-        string databaseName = config["Connection:DatabaseName"]!;
+        string serverName = config[Constants.Settings.ServerName]!;
+        string databaseName = config[Constants.Settings.DatabaseName]!;
 
         Console.WriteLine($"Server:   {serverName}");
         Console.WriteLine($"Database: {databaseName}");

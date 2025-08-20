@@ -4,6 +4,7 @@ using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
 using SqlHelper.App;
+using SqlHelper.Helpers;
 using System.Collections.Specialized;
 using static SqlHelper.Helpers.StaticHelper;
 
@@ -11,42 +12,22 @@ class Program
 {
     static void Main(string[] args)
     {
-        IScripter scripter = CreateScripter<CreateTableScripter>(out var tableName, out var table);
+        ConnectToDb(out var sqlConn, out var server, out var db, out var config);
 
-        StringCollection lines = RunScripter(scripter, table);
+        IScripter scripter = CreateScripter<CreateTableScripter>(server, db, config);
 
-        string outputFile = GetOutputPath(tableName);
+        StringCollection lines = scripter.Run();
+
+        string outputFile = GetOutputPath(config[Constants.Settings.TableName]!);
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
-        File.WriteAllLines(outputFile, ToStringArray(lines));
+        File.WriteAllLines(outputFile, ToStringArray(lines).Select(l => $"{l}\n"));
 
-        Console.WriteLine($"✔ Script written to: {outputFile}");
+        Console.WriteLine($"Script written to: {outputFile}");
     }
 
-    private static StringCollection RunScripter(Scripter scripter, Table table)
+    private static IScripter CreateScripter<T>(Server server, Database db, IConfigurationRoot config) where T : IScripter
     {
-        // Build a URN list rooted at the table, then let SMO discover dependencies
-        var roots = new List<Urn> { table.Urn };
-
-        //// Parents + Children ensures keys/refs and dependent bits are ordered correctly
-        //var tree = scripter.DiscoverDependencies(roots.ToArray(), parents: false);
-
-        //// Walk dependency tree to get URNs in executable order
-        //var ordered = scripter.WalkDependencies(tree);
-
-        //var result = ordered;
-
-        //// Script all objects in order
-        //var lines = scripter.ScriptWithList(ordered);
-
-        var lines = scripter.Script(roots.ToArray());
-        return lines;
-    }
-
-    private static IScripter CreateScripter<T>() where T : IScripter
-    {
-        ConnectToDb(out var _, out var server, out var db, out var config);
-
         return T.Create(server, db, config);
     }
 
