@@ -1,7 +1,10 @@
-﻿using Microsoft.Data.SqlClient;
+﻿// Ignore Spelling: scripter
+
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Smo;
+using SqlHelper.App;
 using System.Collections.Specialized;
 
 namespace SqlHelper.Helpers;
@@ -44,11 +47,11 @@ public static class StaticHelper
         db = server.Databases[databaseName] ?? throw new Exception($"DB '{databaseName}' not found.");
     }
 
-    public static string GetOutputPath(string tableName)
+    public static string GetOutputPath(IScripter scripter)
     {
         string exeDir = AppDomain.CurrentDomain.BaseDirectory;
         string projectDir = Path.GetFullPath(Path.Combine(exeDir, @"..\..\.."));
-        var outputFile = Path.Combine(projectDir, "Generated", $"{tableName}_with_deps.sql");
+        var outputFile = Path.Combine(projectDir, "Generated", $"{scripter.OutputFileName}.sql");
 
         return outputFile;
     }

@@ -4,6 +4,7 @@ using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
 using SqlHelper.App;
+using SqlHelper.App.Scripters;
 using SqlHelper.Helpers;
 using System.Collections.Specialized;
 using static SqlHelper.Helpers.StaticHelper;
@@ -12,18 +13,23 @@ class Program
 {
     static void Main(string[] args)
     {
+        RunScripter<CreateColumnScripter>(out var outputFilePath);
+
+        Console.WriteLine($"Script written to: {outputFilePath}");
+    }
+
+    private static void RunScripter<T>(out string outputFilePath) where T : IScripter
+    {
         ConnectToDb(out var sqlConn, out var server, out var db, out var config);
 
-        IScripter scripter = CreateScripter<CreateTableScripter>(server, db, config);
+        IScripter scripter = CreateScripter<T>(server, db, config);
 
         StringCollection lines = scripter.Run();
 
-        string outputFile = GetOutputPath(config[Constants.Settings.TableName]!);
+        outputFilePath = GetOutputPath(scripter);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(outputFile)!);
-        File.WriteAllLines(outputFile, ToStringArray(lines).Select(l => $"{l}\n"));
-
-        Console.WriteLine($"Script written to: {outputFile}");
+        Directory.CreateDirectory(Path.GetDirectoryName(outputFilePath)!);
+        File.WriteAllLines(outputFilePath, ToStringArray(lines).Select(l => $"{l}\n"));
     }
 
     private static IScripter CreateScripter<T>(Server server, Database db, IConfigurationRoot config) where T : IScripter
@@ -72,13 +78,7 @@ class Program
                 return;
             }
  
-            // Verify the column exists
-            Column column = table.Columns[columnName];
-            if (column == null)
-            {
-                Console.WriteLine($"Column {columnName} not found in table {tableName}.");
-                return;
-            }
+            
  
             // Initialize the Scripter object
             Scripter scripter = new Scripter(server);

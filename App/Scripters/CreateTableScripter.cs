@@ -5,11 +5,14 @@ using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
 using SqlHelper.Helpers;
 using System.Collections.Specialized;
+using System.Data.Common;
 
-namespace SqlHelper.App;
+namespace SqlHelper.App.Scripters;
 
 internal class CreateTableScripter : IScripter
 {
+    public string OutputFileName { get; }
+
     private readonly Scripter scripter;
     private readonly IConfigurationRoot config;
     private readonly Table table;
@@ -19,6 +22,7 @@ internal class CreateTableScripter : IScripter
         scripter = new Scripter(server) { Options = OptionBuilder.CreateDefaultDriAllOptions() };
         this.config = config;
         this.table = table;
+        OutputFileName = $"{nameof(CreateTableScripter)}_{table.Name}";
     }
 
     static IScripter IScripter.Create(Server server, Database db, IConfigurationRoot config)
