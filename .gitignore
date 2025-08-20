@@ -3,6 +3,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# ignore everything inside the folder
+Generated/*
+
+# but keep the folder itself and any keep-file
+!Generated/
+!Generated/.gitkeep
+
 # User-specific files
 *.rsuser
 *.suo
