@@ -10,7 +10,7 @@ using Index = Microsoft.SqlServer.Management.Smo.Index;
 
 namespace SqlHelper.App.Scripters;
 
-internal class CreateColumnScripter : IScripter
+public partial class CreateColumnScripter : IScripter
 {
     public string OutputFileName { get; }
 
@@ -29,7 +29,7 @@ internal class CreateColumnScripter : IScripter
     }
 
 
-    static IScripter IScripter.Create(Server server, Database db, IConfigurationRoot config)
+    public static IScripter Create(Server server, Database db, IConfigurationRoot config)
     {
         var schemaName = config[TableSchemaName];
         var tableName = config[TableName];
@@ -40,6 +40,7 @@ internal class CreateColumnScripter : IScripter
         return new CreateColumnScripter(server, config, table, column);
     }
 
+    #region Run
     public StringCollection Run()
     {
         UrnCollection urnsToScript = new UrnCollection();
@@ -228,4 +229,7 @@ ADD [{column.Name}] {typeDecl} {(column.Nullable ? "NULL" : "NOT NULL")};
             urns.Add(fti.Urn);
         }
     }
+    #endregion
+
+    public partial class DropColumnScripter { }
 }
