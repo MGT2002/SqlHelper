@@ -3,17 +3,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Management.Common;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
-using System;
-using System.Collections.Generic;
+using SqlHelper.App;
 using System.Collections.Specialized;
-using System.IO;
-using System.Reflection;
+using static SqlHelper.Helpers.StaticHelper;
 
 class Program
 {
     static void Main(string[] args)
     {
-        Scripter scripter = CreateScripter(out var tableName, out var sqlConn, out var table);
+        IScripter scripter = CreateScripter<CreateTableScripter>(out var tableName, out var table);
 
         StringCollection lines = RunScripter(scripter, table);
 
@@ -45,86 +43,11 @@ class Program
         return lines;
     }
 
-    private static Scripter CreateScripter(out string tableName, out SqlConnection sqlConn, out Table table)
+    private static IScripter CreateScripter<T>() where T : IScripter
     {
-        var config = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
+        ConnectToDb(out var _, out var server, out var db, out var config);
 
-        // read values directly without a class
-        string serverName = config["Connection:ServerName"]!;
-        string databaseName = config["Connection:DatabaseName"]!;
-
-        Console.WriteLine($"Server:   {serverName}");
-        Console.WriteLine($"Database: {databaseName}");
-
-        var schemaName = "phx";
-        tableName = "BillItemType";
-
-
-        // Use SQL Auth:
-        var csb = new SqlConnectionStringBuilder
-        {
-            DataSource = serverName,
-            InitialCatalog = databaseName,
-
-            //UserID = "sa",            // or your SQL login
-            //Password = "YourPassword",
-            //TrustServerCertificate = true
-
-            IntegratedSecurity = true,   // <-- Windows Auth
-            Encrypt = true,              // keep if your server enforces TLS
-            TrustServerCertificate = true // optional for dev; prefer real certs in prod
-        };
-
-        sqlConn = new SqlConnection(csb.ConnectionString);
-        var svrConn = new ServerConnection(sqlConn);
-        var server = new Server(svrConn);
-        var db = server.Databases[databaseName] ?? throw new Exception($"DB '{databaseName}' not found.");
-
-        table = db.Tables[tableName, schemaName] ?? throw new Exception($"Table {schemaName}.{tableName} not found.");
-
-        // --- Scripting options (similar to SSMS “Generate Scripts…/Advanced”) ---
-        var opt = new ScriptingOptions
-        {
-            ScriptDrops = false,
-            WithDependencies = false,          // include dependent/related objects
-            Indexes = true,                   // script indexes
-            DriAll = true,                    // PK, FK, CK, UQ
-            FullTextIndexes = true,
-            IncludeHeaders = true,
-            Triggers = true,                  // table triggers
-            ExtendedProperties = true,        // EPs
-            
-            IncludeIfNotExists = false,
-            ScriptBatchTerminator = true,     // adds "GO"
-            SchemaQualify = true,
-            NoFileGroup = false,             // include filegroups if present
-            ScriptDataCompression = true,           
-            Statistics = true,
-            NoCollation = false,
-
-            TargetServerVersion = SqlServerVersion.VersionLatest,
-        };
-
-        return new Scripter(server) { Options = opt };
-    }
-
-    private static string GetOutputPath(string tableName)
-    {
-        string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-        string projectDir = Path.GetFullPath(Path.Combine(exeDir, @"..\..\.."));
-        var outputFile = Path.Combine(projectDir, "Generated", $"{tableName}_with_deps.sql");
-
-        return outputFile;
-    }
-
-    static string[] ToStringArray(StringCollection sc)
-    {
-        var arr = new string[sc.Count];
-        sc.CopyTo(arr, 0);
-        return arr;
+        return T.Create(server, db, config);
     }
 
     /*
