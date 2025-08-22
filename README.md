@@ -10,7 +10,8 @@ Drop Columns: Automate T-SQL ALTER TABLE DROP COLUMN scripts.
 Single Table Context: Manage related SQL objects (e.g., constraints, indexes) in one table context.
 T-SQL Exclusive: Optimized for Microsoft SQL Server.
 
-#Usage
+# Usage
+
 1. Add all the required information to the appsettings.json file.
 
 <img width="430" height="305" alt="image" src="https://github.com/user-attachments/assets/1a206543-49f5-4e5d-9091-8b68bc11adbb" />
@@ -26,12 +27,13 @@ T-SQL Exclusive: Optimized for Microsoft SQL Server.
 <img width="995" height="312" alt="image" src="https://github.com/user-attachments/assets/9a2cd89a-6935-4568-b4d9-725b43873593" />
 
 
-#Contributing
+# Contributing
 
 Fork the repository.
 Create a new branch.
 Open a Pull Request.
 
-License
+# License
+
 This project is licensed under the MIT License - see the LICENSE file for details.
 Contact
