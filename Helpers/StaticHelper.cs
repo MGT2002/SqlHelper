@@ -28,7 +28,15 @@ public static class StaticHelper
         Console.WriteLine($"Server:   {serverName}");
         Console.WriteLine($"Database: {databaseName}");
 
+        sqlConn = CreateDefaultSqlConnection(serverName, databaseName);
+        var svrConn = new ServerConnection(sqlConn);
+        server = new Server(svrConn);
+        db = server.Databases[databaseName] ?? throw new Exception($"DB '{databaseName}' not found.");
+    }
 
+    public static SqlConnection CreateDefaultSqlConnection(string serverName, string databaseName)
+    {
+        SqlConnection sqlConn;
         // Use SQL Auth:
         var csb = new SqlConnectionStringBuilder
         {
@@ -45,9 +53,7 @@ public static class StaticHelper
         };
 
         sqlConn = new SqlConnection(csb.ConnectionString);
-        var svrConn = new ServerConnection(sqlConn);
-        server = new Server(svrConn);
-        db = server.Databases[databaseName] ?? throw new Exception($"DB '{databaseName}' not found.");
+        return sqlConn;
     }
 
     public static string GetOutputPath(IScripter scripter)

@@ -1,5 +1,6 @@
 ﻿// Ignore Spelling: Scripter
 
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
@@ -8,6 +9,7 @@ using SqlHelper.Helpers;
 using System.Collections.Specialized;
 using System.Data.Common;
 using System.Globalization;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 
 namespace SqlHelper.App.Scripters;
@@ -24,6 +26,9 @@ internal class InsertRandomDataInTableScripter : IScripter
     private readonly double nullProbability;
     private readonly bool disableConstraints;
     private readonly HashSet<string> excludedColumns;
+    private readonly Dictionary<string, List<object>> fkValueCache;
+
+    private const int maxFkRowCountToLoadPerColumn = 100;
 
     private InsertRandomDataInTableScripter(
         Server server,
@@ -41,7 +46,8 @@ internal class InsertRandomDataInTableScripter : IScripter
         this.nullProbability = nullProbability;
         this.disableConstraints = disableConstraints;
         this.excludedColumns = new HashSet<string>(appSettings.ScripterData.InsertRandomDataInTableScripter.ExcludedColumns, StringComparer.OrdinalIgnoreCase);
-    }
+        this.fkValueCache = CreateForeignKeyValueCache(appSettings, table);
+    }    
 
     static IScripter IScripter.Create(Server server, Database db, AppSettings appSettings)
     {
@@ -109,7 +115,26 @@ internal class InsertRandomDataInTableScripter : IScripter
                 first = false;
 
                 names.AppendLine(Bracket(col.Name));
-                values.AppendLine(useNull ? "NULL" : ToSqlLiteral(RandomValue(col, rng, jsonCols)));
+                if (useNull)
+                {
+                    values.Append("NULL");
+                }
+                else
+                {
+                    object? val;
+
+                    if (fkValueCache.TryGetValue(col.Name, out var cache))
+                    {
+                        val = cache.Count == 0 ? null : cache[rng.Next(cache.Count)];
+                    }
+                    else
+                    {
+                        val = RandomValue(col, rng, jsonCols);
+                    }
+
+                    values.AppendLine(ToSqlLiteral(val));
+                }
+
             }
 
             sb.Append("INSERT INTO ")
@@ -359,4 +384,65 @@ internal class InsertRandomDataInTableScripter : IScripter
         return sb.ToString();
     }
 
+    private static Dictionary<string, List<object>> CreateForeignKeyValueCache(AppSettings appSettings, Table table)
+    {
+        // NEW: map child column -> (parent schema, parent table, parent column)
+        Dictionary<string, (string ParentSchema, string ParentTable, string ParentColumn)> fkMap = CreateFKMap(table);
+
+        var fkValueCache = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
+        using var sqlConn = StaticHelper.CreateDefaultSqlConnection(appSettings.Connection.ServerName, appSettings.Connection.DatabaseName);
+        sqlConn.Open();
+
+        using (var cmd = new SqlCommand() { Connection = sqlConn })
+        {
+            foreach (var kvp in fkMap)
+            {
+                var childColName = kvp.Key;
+                var (ps, pt, pc) = kvp.Value;
+
+                cmd.CommandText =
+                    $"SELECT TOP ({maxFkRowCountToLoadPerColumn}) {Bracket(pc)} " +
+                    $"FROM {FullName(ps, pt)}" +
+                    $"WHERE {Bracket(pc)} IS NOT NULL " +
+                    $"ORDER BY NEWID();";
+
+                var list = new List<object>();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                        list.Add(rdr.GetValue(0));
+                }
+
+                fkValueCache[childColName] = list; // can be empty if parent has no rows
+            }
+        }
+
+        return fkValueCache;
+
+        static Dictionary<string, (string ParentSchema, string ParentTable, string ParentColumn)> CreateFKMap(Table table)
+        {
+            var fkMap = new Dictionary<string, (string ParentSchema, string ParentTable, string ParentColumn)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (ForeignKey fk in table.ForeignKeys)
+            {
+                if (fk.IsEnabled == false) continue;
+
+                // Keep it simple: single-column FKs only
+                if (fk.Columns.Count != 1) continue;
+
+                var fkc = fk.Columns[0];   // ForeignKeyColumn
+                var parentTable = fk.ReferencedTable;
+                var parentSchema = string.IsNullOrEmpty(fk.ReferencedTableSchema) ? "dbo" : fk.ReferencedTableSchema;
+                var parentColumn = fkc.ReferencedColumn;
+
+                if (!string.IsNullOrEmpty(fkc.Name) && !string.IsNullOrEmpty(parentTable) && !string.IsNullOrEmpty(parentColumn))
+                {
+                    // fkc.Name is the CHILD column name
+                    fkMap[fkc.Name] = (parentSchema, parentTable, parentColumn);
+                }
+            }
+
+            return fkMap;
+        }
+    }
 }
