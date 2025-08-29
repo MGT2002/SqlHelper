@@ -23,6 +23,7 @@ internal class InsertRandomDataInTableScripter : IScripter
     private readonly int rowCount;
     private readonly double nullProbability;
     private readonly bool disableConstraints;
+    private readonly HashSet<string> excludedColumns;
 
     private InsertRandomDataInTableScripter(
         Server server,
@@ -39,6 +40,7 @@ internal class InsertRandomDataInTableScripter : IScripter
         this.rowCount = rowCount;
         this.nullProbability = nullProbability;
         this.disableConstraints = disableConstraints;
+        this.excludedColumns = new HashSet<string>(appSettings.ScripterData.InsertRandomDataInTableScripter.ExcludedColumns, StringComparer.OrdinalIgnoreCase);
     }
 
     static IScripter IScripter.Create(Server server, Database db, AppSettings appSettings)
@@ -64,6 +66,7 @@ internal class InsertRandomDataInTableScripter : IScripter
         var insertableCols = table.Columns
                 .Cast<Column>()
                 .Where(CouldBeInserted)
+                .Where(c => !excludedColumns.Contains(c.Name))
                 .ToList();
 
         var jsonCols = new HashSet<string>(

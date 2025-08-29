@@ -26,6 +26,8 @@ public class AppSettings
             public int RowCount { get; set; }
             public bool DisableConstraints { get; set; }
             public double NullProbability { get; set; }
+
+            public string[] ExcludedColumns { get; set; } = [];
         }
     }
 }
