@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Management.Smo;
+using SqlHelper.Helpers;
 using System.Collections.Specialized;
 
 namespace SqlHelper.App.Scripters;
@@ -23,9 +24,9 @@ public partial class CreateColumnScripter
         }
 
 
-        public static IScripter Create(Server server, Database db, IConfigurationRoot config)
+        public static IScripter Create(Server server, Database db, AppSettings appSettings)
         {
-            return new DropColumnScripter((CreateColumnScripter)CreateColumnScripter.Create(server, db, config));
+            return new DropColumnScripter((CreateColumnScripter)CreateColumnScripter.Create(server, db, appSettings));
         }
 
         public StringCollection Run() => columnScripter.Run();

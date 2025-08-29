@@ -17,26 +17,44 @@ internal class InsertRandomDataInTableScripter : IScripter
     public string OutputFileName { get; }
 
     private readonly Scripter scripter;
-    private readonly IConfigurationRoot config;
+    private readonly AppSettings appSettings;
     private readonly Table table;
     private readonly Random rng = new(12345);
-    private readonly int rowCount = 10;
+    private readonly int rowCount;
+    private readonly double nullProbability;
+    private readonly bool disableConstraints;
 
-    private InsertRandomDataInTableScripter(Server server, IConfigurationRoot config, Table table)
+    private InsertRandomDataInTableScripter(
+        Server server,
+        AppSettings appSettings,
+        Table table,
+        int rowCount,
+        double nullProbability,
+        bool disableConstraints)
     {
         scripter = new Scripter(server) { Options = OptionBuilder.CreateDefaultDriAllOptions() };
-        this.config = config;
+        this.appSettings = appSettings;
         this.table = table;
         OutputFileName = $"{nameof(InsertRandomDataInTableScripter)}_{table.Name}";
+        this.rowCount = rowCount;
+        this.nullProbability = nullProbability;
+        this.disableConstraints = disableConstraints;
     }
 
-    static IScripter IScripter.Create(Server server, Database db, IConfigurationRoot config)
+    static IScripter IScripter.Create(Server server, Database db, AppSettings appSettings)
     {
-        var schemaName = config[Constants.Settings.TableSchemaName];
-        var tableName = config[Constants.Settings.TableName];
+        var schemaName = appSettings.ScripterData.SchemaName;
+        var tableName = appSettings.ScripterData.TableName;
         var table = db.Tables[tableName, schemaName] ?? throw new Exception($"Table {schemaName}.{tableName} not found. Please update appsettings.json.");
 
-        return new InsertRandomDataInTableScripter(server, config, table);
+        return new InsertRandomDataInTableScripter(
+            server,
+            appSettings,
+            table,
+            appSettings.ScripterData.InsertRandomDataInTableScripter.RowCount,
+            appSettings.ScripterData.InsertRandomDataInTableScripter.NullProbability,
+            appSettings.ScripterData.InsertRandomDataInTableScripter.DisableConstraints
+            );
     }
 
     public StringCollection Run()
@@ -66,8 +84,10 @@ internal class InsertRandomDataInTableScripter : IScripter
         sb.AppendLine("BEGIN TRY");
         sb.AppendLine("BEGIN TRAN;");
 
-        // Uncomment if you want to ignore FK checks on THIS table only (fast + forgiving):
-        // sb.AppendLine($"ALTER TABLE [{TableSchema}].[{TableName}] NOCHECK CONSTRAINT ALL;");
+        if (disableConstraints)
+        {
+            sb.AppendLine($"ALTER TABLE [{table.Schema}].[{table.Name}] NOCHECK CONSTRAINT ALL;");
+        }
 
         for (int i = 0; i < rowCount; i++)
         {
@@ -80,7 +100,7 @@ internal class InsertRandomDataInTableScripter : IScripter
                 if (CouldBeInserted(col) == false)
                     continue;
 
-                bool useNull = col.Nullable && rng.NextDouble() < .1;
+                bool useNull = col.Nullable && rng.NextDouble() < nullProbability;
 
                 if (!first) { names.Append(", "); values.Append(", "); }
                 first = false;
@@ -98,8 +118,10 @@ internal class InsertRandomDataInTableScripter : IScripter
                 .AppendLine(");");
         }
 
-        // If you NOCHECKed above, re-enable:
-        // sb.AppendLine($"ALTER TABLE [{TableSchema}].[{TableName}] WITH CHECK CHECK CONSTRAINT ALL;");
+        if (disableConstraints)
+        {
+            sb.AppendLine($"ALTER TABLE [{table.Schema}].[{table.Name}] WITH CHECK CHECK CONSTRAINT ALL;");
+        }
 
         sb.AppendLine("COMMIT;");
         sb.AppendLine("END TRY");
