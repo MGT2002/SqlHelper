@@ -9,11 +9,14 @@ class Program
 {
     static void Main(string[] args)
     {
-        RunScripter<CreateColumnScripter>(out var outputFilePath);
-        Console.WriteLine($"Script written to: {outputFilePath}");
+        RunScripter<InsertRandomDataInTableScripter>(out var outputFilePath3);
+        Console.WriteLine($"Script written to: {outputFilePath3}");
 
-        RunScripter<CreateColumnScripter.DropColumnScripter>(out var outputFilePath2);
-        Console.WriteLine($"Script written to: {outputFilePath2}");
+        //RunScripter<CreateColumnScripter>(out var outputFilePath);
+        //Console.WriteLine($"Script written to: {outputFilePath}");
+
+        //RunScripter<CreateColumnScripter.DropColumnScripter>(out var outputFilePath2);
+        //Console.WriteLine($"Script written to: {outputFilePath2}");
     }
 
     private static void RunScripter<T>(out string outputFilePath) where T : IScripter
