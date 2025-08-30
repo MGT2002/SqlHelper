@@ -5,9 +5,9 @@ Overview
 SqlHelper is a utility for T-SQL, designed to simplify generating SQL scripts for database management. Currently it automates
 
 1. CREATE TABLE
-2. CREATE COLUMN and DROP COLUMN
-
-consolidating all related SQL objects within a single table context.
+2. CREATE COLUMN
+3. DROP COLUMN
+  consolidating all related SQL objects within a single table context.
 
 3. Generate test data for table(Insert script).
 
