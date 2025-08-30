@@ -1,11 +1,9 @@
 ﻿// Ignore Spelling: Scripter
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Smo;
 using SqlHelper.Helpers;
 using System.Collections.Specialized;
-using System.Data.Common;
 
 namespace SqlHelper.App.Scripters;
 
@@ -14,24 +12,24 @@ internal class CreateTableScripter : IScripter
     public string OutputFileName { get; }
 
     private readonly Scripter scripter;
-    private readonly IConfigurationRoot config;
+    private readonly AppSettings appSettings;
     private readonly Table table;
 
-    private CreateTableScripter(Server server, IConfigurationRoot config, Table table)
+    private CreateTableScripter(Server server, AppSettings appSettings, Table table)
     {
         scripter = new Scripter(server) { Options = OptionBuilder.CreateDefaultDriAllOptions() };
-        this.config = config;
+        this.appSettings = appSettings;
         this.table = table;
         OutputFileName = $"{nameof(CreateTableScripter)}_{table.Name}";
     }
 
-    static IScripter IScripter.Create(Server server, Database db, IConfigurationRoot config)
+    static IScripter IScripter.Create(Server server, Database db, AppSettings appSettings)
     {
-        var schemaName = config[Constants.Settings.TableSchemaName];
-        var tableName = config[Constants.Settings.TableName];
+        var schemaName = appSettings.ScripterData.SchemaName;
+        var tableName = appSettings.ScripterData.TableName;
         var table = db.Tables[tableName, schemaName] ?? throw new Exception($"Table {schemaName}.{tableName} not found. Please update appsettings.json.");
 
-        return new CreateTableScripter(server, config, table);
+        return new CreateTableScripter(server, appSettings, table);
     }
 
     public StringCollection Run()
